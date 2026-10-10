@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!-- Database connection settings using MySQL 8 -->
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/campuschat?useSSL=false&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true</property>
+        <property name="hibernate.connection.username">root</property>
+        <property name="hibernate.connection.password">root</property>
+
+        <!-- HikariCP Connection Pool Integration -->
+        <property name="hibernate.connection.provider_class">org.hibernate.hikaricp.internal.HikariCPConnectionProvider</property>
+        <property name="hibernate.hikari.maximumPoolSize">20</property>
+        <property name="hibernate.hikari.minimumIdle">5</property>
+        <property name="hibernate.hikari.idleTimeout">300000</property>
+        <property name="hibernate.hikari.connectionTimeout">20000</property>
+
+        <!-- SQL Dialect for MySQL 8 -->
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+        <property name="hibernate.auto_quote_keyword">true</property>
+
+        <!-- Echo SQL statements (useful for debugging, false in production) -->
+        <property name="hibernate.show_sql">false</property>
+        <property name="hibernate.format_sql">true</property>
+
+        <!-- Schema management: validate against existing tables in MySQL -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
+
+        <!-- Entity Mappings -->
+        <mapping class="com.campuschat.model.Batch"/>
+        <mapping class="com.campuschat.model.User"/>
+        <mapping class="com.campuschat.model.UserSession"/>
+        <mapping class="com.campuschat.model.Message"/>
+        <mapping class="com.campuschat.model.MessageQueue"/>
+        <mapping class="com.campuschat.model.EmailVerification"/>
+    </session-factory>
+</hibernate-configuration>
