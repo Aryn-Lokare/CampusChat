@@ -28,7 +28,7 @@ public class Message {
     @Column(name = "timestamp", nullable = false)
     private Instant timestamp = Instant.now();
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.campuschat.model.converter.MessageTypeConverter.class)
     @Column(name = "type", nullable = false, length = 20)
     private MessageType type = MessageType.CHAT;
 

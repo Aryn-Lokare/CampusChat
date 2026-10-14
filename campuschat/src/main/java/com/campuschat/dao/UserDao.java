@@ -31,6 +31,21 @@ public class UserDao {
         }
     }
 
+    public void updatePassword(Integer userId, String newHashedPassword) {
+        Transaction tx = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            tx = session.beginTransaction();
+            session.createMutationQuery("update User u set u.password = :pwd where u.userId = :id")
+                    .setParameter("pwd", newHashedPassword)
+                    .setParameter("id", userId)
+                    .executeUpdate();
+            tx.commit();
+        } catch (Exception e) {
+            if (tx != null && tx.isActive()) tx.rollback();
+            logger.error("Failed to update password: {}", e.getMessage(), e);
+        }
+    }
+
     public Optional<User> findById(Integer userId) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             User user = session.get(User.class, userId);

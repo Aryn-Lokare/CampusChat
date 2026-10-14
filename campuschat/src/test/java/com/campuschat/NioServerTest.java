@@ -123,12 +123,14 @@ public class NioServerTest {
             String respA = inA.readLine();
             assertNotNull(respA);
             assertTrue(respA.startsWith("OK|"), "Client A should successfully authenticate: " + respA);
+            drainHistory(inA);
 
             // 2. Client B logs in
             outB.println("LOGIN|userB|secret123");
             String respB = inB.readLine();
             assertNotNull(respB);
             assertTrue(respB.startsWith("OK|"), "Client B should successfully authenticate: " + respB);
+            drainHistory(inB);
 
             // 3. Client A broadcasts a message to their batch
             outA.println("CHAT|" + testBatch.getBatchId() + "|Hello from User A!");
@@ -155,6 +157,14 @@ public class NioServerTest {
             String logoutResp = inA.readLine();
             assertNotNull(logoutResp);
             assertEquals("OK|LOGGED_OUT", logoutResp);
+        }
+    }
+
+    private static void drainHistory(BufferedReader in) throws Exception {
+        String header = in.readLine();
+        if (header != null && header.startsWith("HISTORY_START|")) {
+            String line;
+            while ((line = in.readLine()) != null && !line.startsWith("HISTORY_END|")) {}
         }
     }
 }

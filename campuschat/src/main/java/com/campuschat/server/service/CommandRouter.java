@@ -38,6 +38,9 @@ public class CommandRouter {
             switch (command) {
                 case "LOGIN" -> handleLogin(ctx, parts);
                 case "CHAT" -> handleChat(ctx, parts);
+                case "ANNOUNCE" -> handleAnnounce(ctx, parts);
+                case "EVENT" -> handleEvent(ctx, parts);
+                case "HISTORY" -> handleHistory(ctx, parts);
                 case "LOGOUT" -> handleLogout(ctx);
                 default -> {
                     logger.warn("Unknown command from client {}: {}", ctx.getUsername(), command);
@@ -68,6 +71,11 @@ public class CommandRouter {
         User user = result.user();
         String sessionToken = sessionService.createSession(user, ctx);
         ctx.send("OK|" + sessionToken);
+
+        // FR-12: Load and stream chat history (last 50 messages) upon room entry
+        if (user.getBatch() != null) {
+            messageService.sendRecentHistory(ctx, user.getBatch().getBatchId(), 50);
+        }
     }
 
     private void handleChat(ConnectionContext ctx, String[] parts) {
@@ -78,20 +86,53 @@ public class CommandRouter {
 
         try {
             Integer batchId = Integer.parseInt(parts[1].trim());
-            // Reconstruct content if it contained pipe symbols
-            String content;
-            if (parts.length == 3) {
-                content = parts[2];
-            } else {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 2; i < parts.length; i++) {
-                    if (i > 2) sb.append("|");
-                    sb.append(parts[i]);
-                }
-                content = sb.toString();
-            }
-
+            String content = extractTrailingContent(parts, 2);
             messageService.processChatMessage(ctx, batchId, content);
+        } catch (NumberFormatException e) {
+            ctx.send("ERROR|Invalid batchId format");
+        }
+    }
+
+    private void handleAnnounce(ConnectionContext ctx, String[] parts) {
+        if (parts.length < 3) {
+            ctx.send("ERROR|Usage: ANNOUNCE|batchId|content");
+            return;
+        }
+
+        try {
+            Integer batchId = Integer.parseInt(parts[1].trim());
+            String content = extractTrailingContent(parts, 2);
+            messageService.processAnnouncement(ctx, batchId, content);
+        } catch (NumberFormatException e) {
+            ctx.send("ERROR|Invalid batchId format");
+        }
+    }
+
+    private void handleEvent(ConnectionContext ctx, String[] parts) {
+        if (parts.length < 4) {
+            ctx.send("ERROR|Usage: EVENT|batchId|title|datetime");
+            return;
+        }
+
+        try {
+            Integer batchId = Integer.parseInt(parts[1].trim());
+            String title = parts[2];
+            String datetime = extractTrailingContent(parts, 3);
+            messageService.processEventNotice(ctx, batchId, title, datetime);
+        } catch (NumberFormatException e) {
+            ctx.send("ERROR|Invalid batchId format");
+        }
+    }
+
+    private void handleHistory(ConnectionContext ctx, String[] parts) {
+        if (parts.length < 2) {
+            ctx.send("ERROR|Usage: HISTORY|batchId");
+            return;
+        }
+
+        try {
+            Integer batchId = Integer.parseInt(parts[1].trim());
+            messageService.sendRecentHistory(ctx, batchId, 50);
         } catch (NumberFormatException e) {
             ctx.send("ERROR|Invalid batchId format");
         }
@@ -101,5 +142,17 @@ public class CommandRouter {
         sessionService.terminateSession(ctx);
         ctx.send("OK|LOGGED_OUT");
         ctx.close();
+    }
+
+    private String extractTrailingContent(String[] parts, int startIndex) {
+        if (parts.length == startIndex + 1) {
+            return parts[startIndex];
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = startIndex; i < parts.length; i++) {
+            if (i > startIndex) sb.append("|");
+            sb.append(parts[i]);
+        }
+        return sb.toString();
     }
 }
