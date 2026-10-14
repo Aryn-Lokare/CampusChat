@@ -49,6 +49,8 @@ public class ServerApp {
             SessionDao sessionDao = new SessionDao();
             MessageDao messageDao = new MessageDao();
             com.campuschat.dao.QueueDao queueDao = new com.campuschat.dao.QueueDao();
+            com.campuschat.dao.BatchDao batchDao = new com.campuschat.dao.BatchDao();
+            com.campuschat.dao.VerificationDao verificationDao = new com.campuschat.dao.VerificationDao();
 
             // 3. Initialize In-Memory State
             SessionRegistry sessionRegistry = new SessionRegistry();
@@ -59,7 +61,10 @@ public class ServerApp {
             SessionService sessionService = new SessionService(sessionDao, sessionRegistry, batchRoomRegistry);
             MessageService messageService = new MessageService(messageDao, userDao, queueDao, sessionRegistry, batchRoomRegistry);
             RateLimiter rateLimiter = new RateLimiter();
-            CommandRouter commandRouter = new CommandRouter(authService, sessionService, messageService, rateLimiter);
+            com.campuschat.server.service.MockMailer mailService = new com.campuschat.server.service.MockMailer();
+            com.campuschat.server.service.RegistrationService registrationService =
+                    new com.campuschat.server.service.RegistrationService(userDao, batchDao, verificationDao, mailService);
+            CommandRouter commandRouter = new CommandRouter(authService, sessionService, messageService, rateLimiter, registrationService);
 
             // 5. Start NIO Server
             NioServer server = new NioServer(port, commandRouter, sessionRegistry, batchRoomRegistry);

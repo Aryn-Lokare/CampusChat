@@ -69,7 +69,7 @@ public class VerificationDao {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Long count = session.createQuery(
                     "select count(v) from EmailVerification v " +
-                    "where v.user.id = :uid and v.expiresAt > :since",
+                    "where v.user.userId = :uid and v.expiresAt > :since",
                     Long.class)
                     .setParameter("uid", userId)
                     .setParameter("since", since)

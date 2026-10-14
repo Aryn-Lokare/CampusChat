@@ -41,6 +41,10 @@ public class ConnectionContext {
         this.server = server;
     }
 
+    public ConnectionContext(SocketChannel socketChannel) {
+        this(socketChannel, null);
+    }
+
     public SocketChannel getSocketChannel() {
         return socketChannel;
     }
@@ -141,16 +145,24 @@ public class ConnectionContext {
 
     /**
      * Drains pending outbound bytes into the SocketChannel non-blockingly.
-     * Drains highest priority messages first (FR-9).
-     * Handles partial socket writes cleanly without stalling other clients.
-     *
-     * @return true if all pending bytes were written; false if socket buffer is full (partial write)
      */
+    private volatile boolean closeAfterWrite = false;
+
+    public void closeAfterWrite() {
+        this.closeAfterWrite = true;
+        if (server != null) {
+            server.requestWrite(this);
+        }
+    }
+
     public boolean drain() throws IOException {
         while (true) {
             if (currentWritingBuffer == null) {
                 OutboundMessage msg = outboundQueue.poll();
                 if (msg == null) {
+                    if (closeAfterWrite) {
+                        close();
+                    }
                     return true; // No more data to write
                 }
                 currentWritingBuffer = msg.getBuffer();
