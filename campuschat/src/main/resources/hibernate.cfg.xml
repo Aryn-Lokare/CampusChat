@@ -26,8 +26,8 @@
         <property name="hibernate.show_sql">false</property>
         <property name="hibernate.format_sql">true</property>
 
-        <!-- Schema management: validate against existing tables in MySQL -->
-        <property name="hibernate.hbm2ddl.auto">update</property>
+        <!-- Schema management: database already exists in MySQL -->
+        <property name="hibernate.hbm2ddl.auto">none</property>
 
         <!-- Entity Mappings -->
         <mapping class="com.campuschat.model.Batch"/>
