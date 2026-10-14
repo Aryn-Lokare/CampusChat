@@ -251,6 +251,9 @@ public class NioServer implements Runnable {
         logger.debug("Disconnecting client ({}): {}", ctx.getUsername(), reason);
         sessionRegistry.unregister(ctx);
         batchRoomRegistry.remove(ctx);
+        if (commandRouter != null && commandRouter.getRateLimiter() != null) {
+            commandRouter.getRateLimiter().remove(ctx);
+        }
         ctx.close();
     }
 }

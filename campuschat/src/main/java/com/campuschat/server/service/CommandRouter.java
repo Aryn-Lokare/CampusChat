@@ -16,11 +16,17 @@ public class CommandRouter {
     private final AuthService authService;
     private final SessionService sessionService;
     private final MessageService messageService;
+    private final RateLimiter rateLimiter;
 
-    public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService) {
+    public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService, RateLimiter rateLimiter) {
         this.authService = authService;
         this.sessionService = sessionService;
         this.messageService = messageService;
+        this.rateLimiter = rateLimiter;
+    }
+
+    public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService) {
+        this(authService, sessionService, messageService, null);
     }
 
     /**
@@ -100,6 +106,12 @@ public class CommandRouter {
             return;
         }
 
+        // FR-10: Token-bucket rate limiting for student connections (Faculty are exempt)
+        if (rateLimiter != null && !rateLimiter.tryConsume(ctx)) {
+            ctx.send("ERROR|Rate limit exceeded: Please slow down");
+            return;
+        }
+
         try {
             Integer batchId = Integer.parseInt(parts[1].trim());
             String content = extractTrailingContent(parts, 2);
@@ -170,5 +182,9 @@ public class CommandRouter {
             sb.append(parts[i]);
         }
         return sb.toString();
+    }
+
+    public RateLimiter getRateLimiter() {
+        return rateLimiter;
     }
 }

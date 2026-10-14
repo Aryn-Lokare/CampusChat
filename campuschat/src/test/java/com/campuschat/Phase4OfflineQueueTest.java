@@ -132,8 +132,9 @@ public class Phase4OfflineQueueTest {
 
         // 3. Bob disconnects (simulating connection loss or app closing)
         sockBob.close();
-        // Give server selector thread a brief moment to process EOF and unregister Bob
-        Thread.sleep(300);
+        for (int i = 0; i < 20 && sessionRegistry.isUserOnline(studentBob.getUserId()); i++) {
+            Thread.sleep(100);
+        }
         assertFalse(sessionRegistry.isUserOnline(studentBob.getUserId()), "Bob should now be offline");
 
         // 4. Alice sends a chat message while Bob is offline
@@ -190,18 +191,18 @@ public class Phase4OfflineQueueTest {
         String syncStart = inBobRec.readLine();
         assertEquals("SYNC_START", syncStart, "Catch-up sync must start with SYNC_START");
 
-        // Read the 3 pending messages in chronological order
+        // With FR-9 priority ordering: ANNOUNCE (priority 1) ranks above EVENT (priority 2) above CHAT (priority 3)
         String synced1 = inBobRec.readLine();
-        assertTrue(synced1.startsWith("MSG|CHAT|alice_p4|"), "First synced message should be Alice's chat");
-        assertTrue(synced1.contains("Hello Bob, are you there?"));
+        assertTrue(synced1.startsWith("MSG|ANNOUNCE|smith_p4|"), "First synced message should be Faculty announcement");
+        assertTrue(synced1.contains("Exam date rescheduled"));
 
         String synced2 = inBobRec.readLine();
-        assertTrue(synced2.startsWith("MSG|ANNOUNCE|smith_p4|"), "Second synced message should be Faculty announcement");
-        assertTrue(synced2.contains("Exam date rescheduled"));
+        assertTrue(synced2.startsWith("MSG|EVENT|smith_p4|"), "Second synced message should be Faculty event");
+        assertTrue(synced2.contains("Guest Lecture on AI"));
 
         String synced3 = inBobRec.readLine();
-        assertTrue(synced3.startsWith("MSG|EVENT|smith_p4|"), "Third synced message should be Faculty event");
-        assertTrue(synced3.contains("Guest Lecture on AI"));
+        assertTrue(synced3.startsWith("MSG|CHAT|alice_p4|"), "Third synced message should be Alice's chat");
+        assertTrue(synced3.contains("Hello Bob, are you there?"));
 
         // Read SYNC_END
         String syncEnd = inBobRec.readLine();

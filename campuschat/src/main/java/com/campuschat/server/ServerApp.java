@@ -7,6 +7,7 @@ import com.campuschat.server.network.NioServer;
 import com.campuschat.server.service.AuthService;
 import com.campuschat.server.service.CommandRouter;
 import com.campuschat.server.service.MessageService;
+import com.campuschat.server.service.RateLimiter;
 import com.campuschat.server.service.SessionService;
 import com.campuschat.server.state.BatchRoomRegistry;
 import com.campuschat.server.state.SessionRegistry;
@@ -57,7 +58,8 @@ public class ServerApp {
             AuthService authService = new AuthService(userDao);
             SessionService sessionService = new SessionService(sessionDao, sessionRegistry, batchRoomRegistry);
             MessageService messageService = new MessageService(messageDao, userDao, queueDao, sessionRegistry, batchRoomRegistry);
-            CommandRouter commandRouter = new CommandRouter(authService, sessionService, messageService);
+            RateLimiter rateLimiter = new RateLimiter();
+            CommandRouter commandRouter = new CommandRouter(authService, sessionService, messageService, rateLimiter);
 
             // 5. Start NIO Server
             NioServer server = new NioServer(port, commandRouter, sessionRegistry, batchRoomRegistry);
@@ -69,6 +71,7 @@ public class ServerApp {
             // Register JVM shutdown hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 System.out.println("\n[SHUTDOWN] Stopping server and closing connections...");
+                rateLimiter.shutdown();
                 server.stop();
                 HibernateUtil.shutdown();
                 System.out.println("[SHUTDOWN] Server stopped successfully.");
