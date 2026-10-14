@@ -43,6 +43,41 @@ public class SessionDao {
     }
 
     /**
+     * Query 6 with Optimistic Locking: Validates session and touches last_seen_time.
+     * Managed entity modification triggers version increment and throws OptimisticLockException
+     * if concurrent reconnects race.
+     */
+    public Optional<UserSession> validateAndTouchSession(String token) {
+        Transaction tx = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            tx = session.beginTransaction();
+            UserSession userSession = session.createQuery(
+                    "from UserSession s join fetch s.user u left join fetch s.batch b " +
+                    "where s.sessionToken = :token and s.active = true",
+                    UserSession.class)
+                    .setParameter("token", token)
+                    .uniqueResult();
+
+            if (userSession == null) {
+                tx.rollback();
+                return Optional.empty();
+            }
+
+            userSession.setLastSeenTime(Instant.now());
+            tx.commit();
+            return Optional.of(userSession);
+        } catch (jakarta.persistence.OptimisticLockException | org.hibernate.StaleObjectStateException e) {
+            if (tx != null && tx.isActive()) tx.rollback();
+            logger.warn("Optimistic lock conflict on session reconnect: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            if (tx != null && tx.isActive()) tx.rollback();
+            logger.error("Failed to validate and touch session: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
      * Update last_seen_time on heartbeat or reconnect
      */
     public void touchSession(String token) {
