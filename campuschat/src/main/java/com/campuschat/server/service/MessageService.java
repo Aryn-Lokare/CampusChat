@@ -171,10 +171,7 @@ public class MessageService {
         MessageDto dto = MessageDao.toDto(message);
         String protocolMsg = dto.toProtocolString();
 
-        // 3. Real-time broadcast to online members
-        batchRoomRegistry.broadcast(batchId, protocolMsg);
-
-        // 4. FR-7: Offline Queuing - find active batch members not online and insert queue rows
+        // 3. FR-7: Offline Queuing - find active batch members not online and insert queue rows
         if (batchId != null) {
             List<User> batchUsers = userDao.findActiveUsersByBatchId(batchId);
             List<User> offlineUsers = new ArrayList<>();
@@ -189,6 +186,9 @@ public class MessageService {
                 logger.debug("Queued [{}] message for {} offline user(s)", type, offlineUsers.size());
             }
         }
+
+        // 4. Real-time broadcast to online members
+        batchRoomRegistry.broadcast(batchId, protocolMsg);
 
         logger.info("Broadcasted [{}] from {} to batch {}", type, sender.getUsername(), batchId);
         return true;
