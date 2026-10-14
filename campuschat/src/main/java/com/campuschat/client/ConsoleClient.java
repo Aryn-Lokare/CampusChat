@@ -30,6 +30,9 @@ public class ConsoleClient {
 
             System.out.println("[CONNECTED] Connected to Campus Chat Server!");
             System.out.println("\nCommands available:");
+            System.out.println("  register <user> <email> <pass> [batchId] - Register a new account");
+            System.out.println("  verify <email> <token>                 - Verify email using received token");
+            System.out.println("  resend <email>                         - Resend email verification token");
             System.out.println("  login <user> <pass>                    - Log in to your account");
             System.out.println("  reconnect [token]                      - Reconnect existing session & catch up missed messages");
             System.out.println("  chat <batchId> <message>               - Send chat to your batch");
@@ -61,7 +64,32 @@ public class ConsoleClient {
                     break;
                 }
 
-                if (input.startsWith("login ")) {
+                if (input.startsWith("register ")) {
+                    String[] parts = input.split("\\s+");
+                    if (parts.length >= 4) {
+                        String user = parts[1];
+                        String email = parts[2];
+                        String pass = parts[3];
+                        String batchId = parts.length > 4 ? parts[4] : "";
+                        out.println("REGISTER|" + user + "|" + email + "|" + pass + (batchId.isEmpty() ? "" : "|" + batchId));
+                    } else {
+                        System.out.println("[USAGE] register <username> <email> <password> [batchId]");
+                    }
+                } else if (input.startsWith("verify ")) {
+                    String[] parts = input.split("\\s+", 3);
+                    if (parts.length >= 3) {
+                        out.println("VERIFY|" + parts[1] + "|" + parts[2]);
+                    } else {
+                        System.out.println("[USAGE] verify <email> <token>");
+                    }
+                } else if (input.startsWith("resend ")) {
+                    String[] parts = input.split("\\s+", 2);
+                    if (parts.length >= 2) {
+                        out.println("RESEND_VERIFY|" + parts[1]);
+                    } else {
+                        System.out.println("[USAGE] resend <email>");
+                    }
+                } else if (input.startsWith("login ")) {
                     String[] parts = input.split("\\s+", 3);
                     if (parts.length >= 3) {
                         out.println("LOGIN|" + parts[1] + "|" + parts[2]);

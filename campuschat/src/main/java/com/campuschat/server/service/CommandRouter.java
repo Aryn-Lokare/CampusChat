@@ -17,16 +17,23 @@ public class CommandRouter {
     private final SessionService sessionService;
     private final MessageService messageService;
     private final RateLimiter rateLimiter;
+    private final RegistrationService registrationService;
 
-    public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService, RateLimiter rateLimiter) {
+    public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService,
+                         RateLimiter rateLimiter, RegistrationService registrationService) {
         this.authService = authService;
         this.sessionService = sessionService;
         this.messageService = messageService;
         this.rateLimiter = rateLimiter;
+        this.registrationService = registrationService;
+    }
+
+    public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService, RateLimiter rateLimiter) {
+        this(authService, sessionService, messageService, rateLimiter, null);
     }
 
     public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService) {
-        this(authService, sessionService, messageService, null);
+        this(authService, sessionService, messageService, null, null);
     }
 
     /**
@@ -42,12 +49,16 @@ public class CommandRouter {
             String command = parts[0].trim().toUpperCase();
 
             switch (command) {
+                case "REGISTER" -> handleRegister(ctx, parts);
+                case "VERIFY" -> handleVerify(ctx, parts);
+                case "RESEND_VERIFY" -> handleResendVerify(ctx, parts);
                 case "LOGIN" -> handleLogin(ctx, parts);
                 case "RECONNECT" -> handleReconnect(ctx, parts);
                 case "CHAT" -> handleChat(ctx, parts);
                 case "ANNOUNCE" -> handleAnnounce(ctx, parts);
                 case "EVENT" -> handleEvent(ctx, parts);
                 case "HISTORY" -> handleHistory(ctx, parts);
+                case "WHOAMI" -> handleWhoami(ctx);
                 case "LOGOUT" -> handleLogout(ctx);
                 default -> {
                     logger.warn("Unknown command from client {}: {}", ctx.getUsername(), command);
@@ -57,6 +68,75 @@ public class CommandRouter {
         } catch (Exception e) {
             logger.error("Error processing command from client: {}", e.getMessage(), e);
             ctx.send("ERROR|Internal server error: " + e.getMessage());
+        }
+    }
+
+    private void handleRegister(ConnectionContext ctx, String[] parts) {
+        if (registrationService == null) {
+            ctx.send("ERROR|Registration service is not configured");
+            return;
+        }
+
+        if (parts.length < 4) {
+            ctx.send("ERROR|Usage: REGISTER|username|email|password");
+            return;
+        }
+
+        String username = parts[1];
+        String email = parts[2];
+        String password = parts[3];
+        Integer batchId = null;
+        if (parts.length >= 5 && !parts[4].isBlank()) {
+            try {
+                batchId = Integer.parseInt(parts[4].trim());
+            } catch (NumberFormatException ignored) {}
+        }
+
+        RegistrationService.RegistrationResult result = registrationService.register(username, email, password, batchId);
+        if (result.success()) {
+            ctx.send("OK|VERIFY_SENT");
+        } else {
+            ctx.send("ERROR|" + result.message());
+        }
+    }
+
+    private void handleVerify(ConnectionContext ctx, String[] parts) {
+        if (registrationService == null) {
+            ctx.send("ERROR|Registration service is not configured");
+            return;
+        }
+
+        if (parts.length < 2 || parts[1].isBlank()) {
+            ctx.send("ERROR|Usage: VERIFY|token or VERIFY|email|token");
+            return;
+        }
+
+        String token = (parts.length >= 3) ? parts[2].trim() : parts[1].trim();
+        RegistrationService.VerificationResult result = registrationService.verify(token);
+        if (result.success()) {
+            ctx.send("OK|VERIFIED");
+        } else {
+            ctx.send("ERROR|" + result.message());
+        }
+    }
+
+    private void handleResendVerify(ConnectionContext ctx, String[] parts) {
+        if (registrationService == null) {
+            ctx.send("ERROR|Registration service is not configured");
+            return;
+        }
+
+        if (parts.length < 2 || parts[1].isBlank()) {
+            ctx.send("ERROR|Usage: RESEND_VERIFY|email");
+            return;
+        }
+
+        String email = parts[1].trim();
+        RegistrationService.ResendResult result = registrationService.resendVerification(email);
+        if (result.success()) {
+            ctx.send("OK|VERIFY_SENT");
+        } else {
+            ctx.send("ERROR|" + result.message());
         }
     }
 
@@ -166,10 +246,20 @@ public class CommandRouter {
         }
     }
 
+    private void handleWhoami(ConnectionContext ctx) {
+        if (!ctx.isAuthenticated()) {
+            ctx.send("ERROR|Not authenticated");
+            return;
+        }
+        String roleName = ctx.getRole() != null ? ctx.getRole().name() : "STUDENT";
+        Integer bId = ctx.getBatchId() != null ? ctx.getBatchId() : 1;
+        ctx.send("ME|" + ctx.getUsername() + "|" + roleName + "|" + bId);
+    }
+
     private void handleLogout(ConnectionContext ctx) {
         sessionService.terminateSession(ctx);
         ctx.send("OK|LOGGED_OUT");
-        ctx.close();
+        ctx.closeAfterWrite();
     }
 
     private String extractTrailingContent(String[] parts, int startIndex) {
@@ -186,5 +276,9 @@ public class CommandRouter {
 
     public RateLimiter getRateLimiter() {
         return rateLimiter;
+    }
+
+    public RegistrationService getRegistrationService() {
+        return registrationService;
     }
 }
