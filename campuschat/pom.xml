@@ -25,6 +25,7 @@
     <logback.version>1.4.14</logback.version>
     <slf4j.version>2.0.12</slf4j.version>
     <javafx.version>17.0.10</javafx.version>
+    <exec.mainClass>com.campuschat.server.ServerApp</exec.mainClass>
   </properties>
 
   <dependencies>
@@ -135,9 +136,27 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.2.0</version>
         <configuration>
-          <mainClass>com.campuschat.TestDbConnection</mainClass>
+          <mainClass>${exec.mainClass}</mainClass>
         </configuration>
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>client</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.2.0</version>
+            <configuration>
+              <mainClass>com.campuschat.client.ConsoleClient</mainClass>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
