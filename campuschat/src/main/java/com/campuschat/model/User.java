@@ -25,11 +25,11 @@ public class User {
     @Column(name = "password", nullable = false, length = 100)
     private String password;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.campuschat.model.converter.RoleConverter.class)
     @Column(name = "role", length = 20)
     private Role role = Role.STUDENT;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.campuschat.model.converter.UserStatusConverter.class)
     @Column(name = "status", nullable = false, length = 20)
     private UserStatus status = UserStatus.PENDING;
 

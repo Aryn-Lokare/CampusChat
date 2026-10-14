@@ -29,13 +29,17 @@ public class AuthService {
         return BCrypt.hashpw(rawPassword, BCrypt.gensalt(12));
     }
 
-    public static boolean checkPassword(String rawPassword, String hashedPassword) {
-        if (rawPassword == null || hashedPassword == null) return false;
+    public static boolean checkPassword(String rawPassword, String storedPassword) {
+        if (rawPassword == null || storedPassword == null) return false;
         try {
-            return BCrypt.checkpw(rawPassword, hashedPassword);
+            // Check if storedPassword is a valid BCrypt hash
+            if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+                return BCrypt.checkpw(rawPassword, storedPassword);
+            }
+            // Fallback for plain-text passwords manually inserted in MySQL Workbench
+            return rawPassword.equals(storedPassword);
         } catch (IllegalArgumentException e) {
-            logger.warn("Corrupt password hash encountered: {}", e.getMessage());
-            return false;
+            return rawPassword.equals(storedPassword);
         }
     }
 
@@ -53,6 +57,11 @@ public class AuthService {
 
         if (!checkPassword(password, user.getPassword())) {
             return new AuthResult(false, null, "Invalid username or password");
+        }
+
+        // Auto-upgrade legacy or plain-text development password to standard BCrypt hash
+        if (!user.getPassword().startsWith("$2")) {
+            userDao.updatePassword(user.getUserId(), hashPassword(password));
         }
 
         if (user.getStatus() == UserStatus.PENDING) {
