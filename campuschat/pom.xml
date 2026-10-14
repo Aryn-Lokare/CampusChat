@@ -173,5 +173,20 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>loadtest</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.2.0</version>
+            <configuration>
+              <mainClass>com.campuschat.client.loadtest.LoadTestClient</mainClass>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>

@@ -129,6 +129,12 @@ public class UserDao {
         }
     }
 
+    public List<User> findAll() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            return session.createQuery("from User u left join fetch u.batch order by u.username", User.class).list();
+        }
+    }
+
     public static UserDto toDto(User user) {
         if (user == null) return null;
         Integer batchId = user.getBatch() != null ? user.getBatch().getBatchId() : null;

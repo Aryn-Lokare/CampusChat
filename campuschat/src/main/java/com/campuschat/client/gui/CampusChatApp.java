@@ -26,6 +26,7 @@ public class CampusChatApp extends Application {
 
     private AuthView authView;
     private ChatView chatView;
+    private AdminDashboardView adminDashboardView;
     private Scene scene;
 
     @Override
@@ -53,6 +54,9 @@ public class CampusChatApp extends Application {
             if (chatView != null) {
                 chatView.updateConnectionStatus(status);
             }
+            if (adminDashboardView != null) {
+                adminDashboardView.updateConnectionStatus(status);
+            }
         });
 
         // Initialize Views
@@ -70,6 +74,9 @@ public class CampusChatApp extends Application {
         // Graceful cleanup on window close
         primaryStage.setOnCloseRequest(e -> {
             logger.info("Closing Campus Chat Client...");
+            if (adminDashboardView != null) {
+                adminDashboardView.stopPolling();
+            }
             networkClient.shutdown();
             Platform.exit();
             System.exit(0);
@@ -88,15 +95,16 @@ public class CampusChatApp extends Application {
         sessionState.setUsername(username);
         sessionState.setSessionToken(sessionToken);
 
-        // Create ChatView
-        chatView = new ChatView(networkClient, sessionState, this::onLogout);
-        scene.setRoot(chatView);
-
-        // Request live user profile from server
+        // Request live user profile from server to decide between ChatView and AdminDashboardView
         networkClient.send("WHOAMI");
     }
 
     private void onLogout() {
+        if (adminDashboardView != null) {
+            adminDashboardView.stopPolling();
+            adminDashboardView = null;
+        }
+        chatView = null;
         sessionState.clear();
         networkClient.setSavedSessionToken(null);
         scene.setRoot(authView);
@@ -121,16 +129,29 @@ public class CampusChatApp extends Application {
                     sessionState.setBatchId(1);
                 }
 
-                if (chatView != null) {
-                    chatView.refreshUserProfile();
+                // If user is ADMIN, navigate to AdminDashboardView (FR-16)
+                if (sessionState.isAdmin()) {
+                    if (adminDashboardView == null) {
+                        adminDashboardView = new AdminDashboardView(networkClient, sessionState, this::onLogout);
+                        scene.setRoot(adminDashboardView);
+                    }
+                } else {
+                    if (chatView == null) {
+                        chatView = new ChatView(networkClient, sessionState, this::onLogout);
+                        scene.setRoot(chatView);
+                    } else {
+                        chatView.refreshUserProfile();
+                    }
                 }
             }
             return;
         }
 
-        // If currently in Auth view
+        // Forward to current active scene view
         if (scene.getRoot() == authView) {
             authView.handleServerResponse(line);
+        } else if (scene.getRoot() == adminDashboardView && adminDashboardView != null) {
+            adminDashboardView.handleIncomingLine(line);
         } else if (chatView != null) {
             chatView.handleIncomingLine(line);
         }
