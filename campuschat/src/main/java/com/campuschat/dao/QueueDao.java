@@ -53,7 +53,7 @@ public class QueueDao {
                     "join fetch mq.message m " +
                     "join fetch m.sender s " +
                     "left join fetch m.batch b " +
-                    "where mq.user.id = :uid and mq.delivered = false " +
+                    "where mq.user.userId = :uid and mq.delivered = false " +
                     "order by m.timestamp asc",
                     MessageQueue.class)
                     .setParameter("uid", userId)
@@ -75,7 +75,7 @@ public class QueueDao {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             tx = session.beginTransaction();
             int updated = session.createMutationQuery(
-                    "update MessageQueue mq set mq.delivered = true where mq.user.id = :uid and mq.delivered = false")
+                    "update MessageQueue mq set mq.delivered = true where mq.user.userId = :uid and mq.delivered = false")
                     .setParameter("uid", userId)
                     .executeUpdate();
             tx.commit();

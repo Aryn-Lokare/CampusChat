@@ -12,6 +12,8 @@ import java.util.Scanner;
  */
 public class ConsoleClient {
 
+    private static volatile String savedSessionToken = null;
+
     public static void main(String[] args) {
         String host = args.length > 0 ? args[0] : "127.0.0.1";
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 8080;
@@ -29,13 +31,14 @@ public class ConsoleClient {
             System.out.println("[CONNECTED] Connected to Campus Chat Server!");
             System.out.println("\nCommands available:");
             System.out.println("  login <user> <pass>                    - Log in to your account");
+            System.out.println("  reconnect [token]                      - Reconnect existing session & catch up missed messages");
             System.out.println("  chat <batchId> <message>               - Send chat to your batch");
             System.out.println("  announce <batchId> <message>           - (Faculty) Post high-priority announcement");
             System.out.println("  event <batchId> <title> <datetime>     - (Faculty) Post event notice");
             System.out.println("  history <batchId>                      - Request recent history");
             System.out.println("  logout                                 - Log out from current session");
             System.out.println("  exit                                   - Disconnect and exit client");
-            System.out.println("  Or type raw commands (e.g. ANNOUNCE|1|Exam postponed)\n");
+            System.out.println("  Or type raw commands (e.g. RECONNECT|<token> or ANNOUNCE|1|Exam postponed)\n");
 
             // Background reader thread for incoming server messages
             Thread readerThread = new Thread(() -> {
@@ -64,6 +67,14 @@ public class ConsoleClient {
                         out.println("LOGIN|" + parts[1] + "|" + parts[2]);
                     } else {
                         System.out.println("[USAGE] login <username> <password>");
+                    }
+                } else if (input.startsWith("reconnect")) {
+                    String[] parts = input.split("\\s+", 2);
+                    String tokenToUse = parts.length > 1 ? parts[1].trim() : savedSessionToken;
+                    if (tokenToUse != null && !tokenToUse.isBlank()) {
+                        out.println("RECONNECT|" + tokenToUse);
+                    } else {
+                        System.out.println("[USAGE] No saved session token. Please specify: reconnect <sessionToken>");
                     }
                 } else if (input.startsWith("chat ")) {
                     String[] parts = input.split("\\s+", 3);
@@ -128,10 +139,25 @@ public class ConsoleClient {
                 return;
             }
         } else if (line.startsWith("OK|")) {
-            System.out.println("\n[SERVER OK] " + line.substring(3));
+            String payload = line.substring(3).trim();
+            if ("RECONNECTED".equalsIgnoreCase(payload)) {
+                System.out.println("\n[SERVER OK] Session reconnected successfully! Catching up on missed messages...");
+            } else if (!"LOGGED_OUT".equalsIgnoreCase(payload)) {
+                savedSessionToken = payload;
+                System.out.println("\n[SERVER OK] Session Token: " + payload);
+            } else {
+                savedSessionToken = null;
+                System.out.println("\n[SERVER OK] " + payload);
+            }
             return;
         } else if (line.startsWith("ERROR|")) {
             System.out.println("\n[SERVER ERROR] " + line.substring(6));
+            return;
+        } else if (line.equals("SYNC_START")) {
+            System.out.println("\n🔄 ================= [SYNC START: CATCHING UP ON MISSED MESSAGES] =================");
+            return;
+        } else if (line.equals("SYNC_END")) {
+            System.out.println("🔄 =================== [SYNC END: ALL MISSED MESSAGES DELIVERED] ===================\n");
             return;
         } else if (line.startsWith("HISTORY_START|")) {
             String[] parts = line.split("\\|");

@@ -37,6 +37,7 @@ public class CommandRouter {
 
             switch (command) {
                 case "LOGIN" -> handleLogin(ctx, parts);
+                case "RECONNECT" -> handleReconnect(ctx, parts);
                 case "CHAT" -> handleChat(ctx, parts);
                 case "ANNOUNCE" -> handleAnnounce(ctx, parts);
                 case "EVENT" -> handleEvent(ctx, parts);
@@ -75,6 +76,21 @@ public class CommandRouter {
         // FR-12: Load and stream chat history (last 50 messages) upon room entry
         if (user.getBatch() != null) {
             messageService.sendRecentHistory(ctx, user.getBatch().getBatchId(), 50);
+        }
+    }
+
+    private void handleReconnect(ConnectionContext ctx, String[] parts) {
+        if (parts.length < 2 || parts[1].isBlank()) {
+            ctx.send("ERROR|Usage: RECONNECT|sessionToken");
+            return;
+        }
+
+        String token = parts[1].trim();
+        boolean restored = sessionService.reconnect(token, ctx);
+        if (restored) {
+            ctx.send("OK|RECONNECTED");
+            // FR-8: Flush queued undelivered messages in timestamp order
+            messageService.syncQueuedMessages(ctx);
         }
     }
 
