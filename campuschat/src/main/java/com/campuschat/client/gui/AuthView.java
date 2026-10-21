@@ -1,5 +1,6 @@
 package com.campuschat.client.gui;
 
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -27,9 +28,11 @@ public class AuthView extends BorderPane {
     private PasswordField loginPassField;
 
     // Register fields
+    private ComboBox<String> regRoleCombo;
     private TextField regUserField;
     private TextField regEmailField;
     private PasswordField regPassField;
+    private Label batchLbl;
     private TextField regBatchField;
 
     // Verify fields
@@ -133,6 +136,12 @@ public class AuthView extends BorderPane {
         VBox box = new VBox(12);
         box.setAlignment(Pos.CENTER_LEFT);
 
+        Label roleLbl = new Label("Register As");
+        roleLbl.getStyleClass().add("text-label");
+        regRoleCombo = new ComboBox<>(FXCollections.observableArrayList("Student", "Faculty"));
+        regRoleCombo.setValue("Student");
+        regRoleCombo.setMaxWidth(Double.MAX_VALUE);
+
         Label userLbl = new Label("Choose Username");
         userLbl.getStyleClass().add("text-label");
         regUserField = new TextField();
@@ -148,9 +157,20 @@ public class AuthView extends BorderPane {
         regPassField = new PasswordField();
         regPassField.setPromptText("At least 6 characters");
 
-        Label batchLbl = new Label("Batch Name (Academic Room) *Required*");
+        batchLbl = new Label("Batch Name (Academic Room) *Required*");
+        batchLbl.getStyleClass().add("text-label");
         regBatchField = new TextField();
         regBatchField.setPromptText("e.g. IT-2026");
+
+        regRoleCombo.setOnAction(e -> {
+            if ("Faculty".equalsIgnoreCase(regRoleCombo.getValue())) {
+                batchLbl.setText("Batch Name (Academic Room) [Optional for Faculty]");
+                regBatchField.setPromptText("Leave empty or specify batch (e.g. IT-2026)");
+            } else {
+                batchLbl.setText("Batch Name (Academic Room) *Required*");
+                regBatchField.setPromptText("e.g. IT-2026");
+            }
+        });
 
         Button submitBtn = new Button("Register Account");
         submitBtn.getStyleClass().add("btn-primary");
@@ -158,6 +178,7 @@ public class AuthView extends BorderPane {
         submitBtn.setOnAction(e -> handleRegister());
 
         box.getChildren().addAll(
+                roleLbl, regRoleCombo,
                 userLbl, regUserField,
                 emailLbl, regEmailField,
                 passLbl, regPassField,
@@ -235,6 +256,7 @@ public class AuthView extends BorderPane {
     }
 
     private void handleRegister() {
+        String role = regRoleCombo.getValue() != null ? regRoleCombo.getValue() : "Student";
         String user = regUserField.getText().trim();
         String email = regEmailField.getText().trim();
         String pass = regPassField.getText().trim();
@@ -245,7 +267,7 @@ public class AuthView extends BorderPane {
             return;
         }
 
-        if (batch.isEmpty()) {
+        if ("Student".equalsIgnoreCase(role) && batch.isEmpty()) {
             showError("Batch Name is required for student registration. It cannot be empty.");
             return;
         }
@@ -255,7 +277,7 @@ public class AuthView extends BorderPane {
         }
 
         clearFeedback();
-        networkClient.send("REGISTER|" + user + "|" + email + "|" + pass + "|" + batch);
+        networkClient.send("REGISTER|" + user + "|" + email + "|" + pass + "|" + batch + "|" + role.toUpperCase());
     }
 
     private void handleVerify() {

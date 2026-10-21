@@ -93,8 +93,8 @@ public class CommandRouter {
             return;
         }
 
-        if (parts.length < 5 || parts[4].isBlank()) {
-            ctx.send("ERROR|Batch name is required for student registration. Usage: REGISTER|username|email|password|batchName");
+        if (parts.length < 5) {
+            ctx.send("ERROR|Usage: REGISTER|username|email|password|batchName|[role]");
             return;
         }
 
@@ -102,8 +102,10 @@ public class CommandRouter {
         String email = parts[2];
         String password = parts[3];
         String batchIdentifier = parts[4].trim();
+        String roleStr = parts.length >= 6 ? parts[5].trim() : "STUDENT";
+        Role role = Role.fromString(roleStr);
 
-        RegistrationService.RegistrationResult result = registrationService.register(username, email, password, batchIdentifier);
+        RegistrationService.RegistrationResult result = registrationService.register(username, email, password, batchIdentifier, role);
         if (result.success()) {
             ctx.send("OK|VERIFY_SENT");
         } else {
