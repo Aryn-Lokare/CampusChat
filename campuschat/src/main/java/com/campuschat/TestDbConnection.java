@@ -27,18 +27,8 @@ public class TestDbConnection {
             System.out.println("[SUCCESS] Hibernate SessionFactory initialized successfully!");
 
             BatchDao batchDao = new BatchDao();
-            UserDao userDao = new UserDao();
-
             List<Batch> batches = batchDao.findAll();
             System.out.println("[INFO] Total Batches found in database: " + batches.size());
-
-            // If no batches exist, create a default sample batch for testing
-            if (batches.isEmpty()) {
-                System.out.println("[INFO] Creating default sample Batch: 'IT-2026'");
-                Batch sampleBatch = new Batch("IT-2026", 2026);
-                batchDao.save(sampleBatch);
-                System.out.println("[SUCCESS] Sample batch created with ID: " + sampleBatch.getBatchId());
-            }
 
             System.out.println("[SUCCESS] Database & Hibernate entities verified successfully!");
         } catch (Throwable t) {

@@ -217,6 +217,42 @@ public class AdminService {
     }
 
     /**
+     * FR-11: Deletes a batch from the system and unassigns affected users.
+     */
+    public AdminResult deleteBatch(String batchIdStr) {
+        if (batchIdStr == null || batchIdStr.isBlank()) {
+            return new AdminResult(false, "Batch ID is required");
+        }
+
+        int bId;
+        try {
+            bId = Integer.parseInt(batchIdStr.trim());
+        } catch (NumberFormatException e) {
+            return new AdminResult(false, "Batch ID must be a valid integer");
+        }
+
+        Optional<com.campuschat.model.Batch> batchOpt = batchDao.findById(bId);
+        if (batchOpt.isEmpty()) {
+            return new AdminResult(false, "Batch #" + bId + " does not exist");
+        }
+
+        // Notify online members of this batch
+        java.util.Set<ConnectionContext> onlineMembers = batchRoomRegistry.getMembers(bId);
+        for (ConnectionContext ctx : onlineMembers) {
+            ctx.send("INFO|Your batch room #" + bId + " has been deleted by an administrator.");
+            ctx.setBatchId(null);
+        }
+
+        boolean deleted = batchDao.deleteById(bId);
+        if (deleted) {
+            logger.info("Admin deleted batch #{}", bId);
+            return new AdminResult(true, "BATCH_DELETED|" + bId);
+        } else {
+            return new AdminResult(false, "Failed to delete batch #" + bId);
+        }
+    }
+
+    /**
      * Terminates an online banned user's live TCP socket and invalidates sessions.
      */
     private void terminateBannedUser(User user) {

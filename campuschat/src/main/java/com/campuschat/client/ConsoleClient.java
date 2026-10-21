@@ -41,6 +41,8 @@ public class ConsoleClient {
             System.out.println("  history <batchId>                      - Request recent history");
             System.out.println("  stats                                  - (Admin) Get live server statistics");
             System.out.println("  createbatch <name> <year>              - (Admin) Create new batch");
+            System.out.println("  deletebatch <batchId>                  - (Admin) Delete a batch");
+            System.out.println("  setbatch <user> <batchId>              - (Admin) Assign user to a batch");
             System.out.println("  setstatus <user> <ACTIVE|BANNED>       - (Admin) Change user moderation status");
             System.out.println("  setrole <user> <STUDENT|FACULTY|ADMIN> - (Admin) Change user role");
             System.out.println("  users                                  - (Admin) List all users");
@@ -146,6 +148,20 @@ public class ConsoleClient {
                         out.println("ADMIN_CREATE_BATCH|" + parts[1] + "|" + parts[2]);
                     } else {
                         System.out.println("[USAGE] createbatch <name> <year>");
+                    }
+                } else if (input.startsWith("deletebatch ")) {
+                    String[] parts = input.split("\\s+", 2);
+                    if (parts.length >= 2) {
+                        out.println("ADMIN_DELETE_BATCH|" + parts[1]);
+                    } else {
+                        System.out.println("[USAGE] deletebatch <batchId>");
+                    }
+                } else if (input.startsWith("setbatch ")) {
+                    String[] parts = input.split("\\s+", 3);
+                    if (parts.length >= 3) {
+                        out.println("ADMIN_SET_BATCH|" + parts[1] + "|" + parts[2]);
+                    } else {
+                        System.out.println("[USAGE] setbatch <username> <batchId>");
                     }
                 } else if (input.startsWith("setstatus ")) {
                     String[] parts = input.split("\\s+", 3);

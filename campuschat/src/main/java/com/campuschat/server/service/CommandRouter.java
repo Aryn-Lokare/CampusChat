@@ -69,6 +69,7 @@ public class CommandRouter {
                 case "WHOAMI" -> handleWhoami(ctx);
                 case "ADMIN_STATS" -> handleAdminStats(ctx);
                 case "ADMIN_CREATE_BATCH" -> handleAdminCreateBatch(ctx, parts);
+                case "ADMIN_DELETE_BATCH" -> handleAdminDeleteBatch(ctx, parts);
                 case "ADMIN_SET_STATUS" -> handleAdminSetStatus(ctx, parts);
                 case "ADMIN_SET_ROLE" -> handleAdminSetRole(ctx, parts);
                 case "ADMIN_SET_BATCH" -> handleAdminSetBatch(ctx, parts);
@@ -302,6 +303,20 @@ public class CommandRouter {
             return;
         }
         AdminService.AdminResult res = adminService.createBatch(parts[1], parts[2]);
+        if (res.success()) {
+            ctx.send("OK|" + res.message());
+        } else {
+            ctx.send("ERROR|" + res.message());
+        }
+    }
+
+    private void handleAdminDeleteBatch(ConnectionContext ctx, String[] parts) {
+        if (!validateAdmin(ctx)) return;
+        if (parts.length < 2) {
+            ctx.send("ERROR|Usage: ADMIN_DELETE_BATCH|batchId");
+            return;
+        }
+        AdminService.AdminResult res = adminService.deleteBatch(parts[1]);
         if (res.success()) {
             ctx.send("OK|" + res.message());
         } else {

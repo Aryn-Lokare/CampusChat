@@ -309,10 +309,23 @@ public class AdminDashboardView extends BorderPane {
         createBtn.getStyleClass().add("btn-primary");
         createBtn.setOnAction(e -> handleCreateBatch());
 
-        createRow.getChildren().addAll(lbl, batchNameField, batchYearField, createBtn);
+        Button deleteBatchBtn = new Button("🗑️ Delete Selected Batch");
+        deleteBatchBtn.getStyleClass().add("btn-danger");
+        deleteBatchBtn.setOnAction(e -> handleDeleteBatch());
+
+        createRow.getChildren().addAll(lbl, batchNameField, batchYearField, createBtn, new Separator(javafx.geometry.Orientation.VERTICAL), deleteBatchBtn);
 
         box.getChildren().addAll(batchTable, createRow);
         return box;
+    }
+
+    private void handleDeleteBatch() {
+        BatchRow selected = batchTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Please select a batch from the table to delete.");
+            return;
+        }
+        networkClient.send("ADMIN_DELETE_BATCH|" + selected.getId());
     }
 
     private void handleBanSelected() {

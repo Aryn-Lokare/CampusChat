@@ -50,6 +50,47 @@ public class BatchDao {
         }
     }
 
+    public boolean deleteById(int batchId) {
+        Transaction tx = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            tx = session.beginTransaction();
+            Batch batch = session.get(Batch.class, batchId);
+            if (batch == null) {
+                return false;
+            }
+
+            // 1. Unassign users belonging to this batch
+            session.createMutationQuery("update User u set u.batch = null where u.batch.id = :bid")
+                    .setParameter("bid", batchId)
+                    .executeUpdate();
+
+            // 2. Clear sessions scoped to this batch
+            session.createMutationQuery("delete from UserSession s where s.batch.id = :bid")
+                    .setParameter("bid", batchId)
+                    .executeUpdate();
+
+            // 3. Delete queued messages and messages in this batch
+            session.createMutationQuery("delete from MessageQueue mq where mq.message.id in (select m.messageId from Message m where m.batch.id = :bid)")
+                    .setParameter("bid", batchId)
+                    .executeUpdate();
+
+            session.createMutationQuery("delete from Message m where m.batch.id = :bid")
+                    .setParameter("bid", batchId)
+                    .executeUpdate();
+
+            // 4. Delete the batch
+            session.remove(batch);
+
+            tx.commit();
+            logger.info("Batch #{} deleted successfully from database", batchId);
+            return true;
+        } catch (Exception e) {
+            if (tx != null && tx.isActive()) tx.rollback();
+            logger.error("Failed to delete batch #{}: {}", batchId, e.getMessage(), e);
+            throw e;
+        }
+    }
+
     public static BatchDto toDto(Batch batch) {
         if (batch == null) return null;
         return new BatchDto(
