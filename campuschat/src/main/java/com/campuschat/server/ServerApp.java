@@ -64,7 +64,9 @@ public class ServerApp {
             com.campuschat.server.service.MockMailer mailService = new com.campuschat.server.service.MockMailer();
             com.campuschat.server.service.RegistrationService registrationService =
                     new com.campuschat.server.service.RegistrationService(userDao, batchDao, verificationDao, mailService);
-            CommandRouter commandRouter = new CommandRouter(authService, sessionService, messageService, rateLimiter, registrationService);
+            com.campuschat.server.service.AdminService adminService =
+                    new com.campuschat.server.service.AdminService(userDao, batchDao, sessionDao, messageDao, queueDao, sessionRegistry, batchRoomRegistry);
+            CommandRouter commandRouter = new CommandRouter(authService, sessionService, messageService, rateLimiter, registrationService, adminService);
 
             // 5. Start NIO Server
             NioServer server = new NioServer(port, commandRouter, sessionRegistry, batchRoomRegistry);

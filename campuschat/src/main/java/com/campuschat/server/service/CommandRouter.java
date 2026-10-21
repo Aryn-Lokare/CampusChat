@@ -1,5 +1,6 @@
 package com.campuschat.server.service;
 
+import com.campuschat.model.Role;
 import com.campuschat.model.User;
 import com.campuschat.server.network.ConnectionContext;
 import org.slf4j.Logger;
@@ -18,22 +19,29 @@ public class CommandRouter {
     private final MessageService messageService;
     private final RateLimiter rateLimiter;
     private final RegistrationService registrationService;
+    private final AdminService adminService;
 
     public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService,
-                         RateLimiter rateLimiter, RegistrationService registrationService) {
+                         RateLimiter rateLimiter, RegistrationService registrationService, AdminService adminService) {
         this.authService = authService;
         this.sessionService = sessionService;
         this.messageService = messageService;
         this.rateLimiter = rateLimiter;
         this.registrationService = registrationService;
+        this.adminService = adminService;
+    }
+
+    public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService,
+                         RateLimiter rateLimiter, RegistrationService registrationService) {
+        this(authService, sessionService, messageService, rateLimiter, registrationService, null);
     }
 
     public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService, RateLimiter rateLimiter) {
-        this(authService, sessionService, messageService, rateLimiter, null);
+        this(authService, sessionService, messageService, rateLimiter, null, null);
     }
 
     public CommandRouter(AuthService authService, SessionService sessionService, MessageService messageService) {
-        this(authService, sessionService, messageService, null, null);
+        this(authService, sessionService, messageService, null, null, null);
     }
 
     /**
@@ -59,6 +67,12 @@ public class CommandRouter {
                 case "EVENT" -> handleEvent(ctx, parts);
                 case "HISTORY" -> handleHistory(ctx, parts);
                 case "WHOAMI" -> handleWhoami(ctx);
+                case "ADMIN_STATS" -> handleAdminStats(ctx);
+                case "ADMIN_CREATE_BATCH" -> handleAdminCreateBatch(ctx, parts);
+                case "ADMIN_SET_STATUS" -> handleAdminSetStatus(ctx, parts);
+                case "ADMIN_SET_ROLE" -> handleAdminSetRole(ctx, parts);
+                case "ADMIN_LIST_USERS" -> handleAdminListUsers(ctx);
+                case "ADMIN_LIST_BATCHES" -> handleAdminListBatches(ctx);
                 case "LOGOUT" -> handleLogout(ctx);
                 default -> {
                     logger.warn("Unknown command from client {}: {}", ctx.getUsername(), command);
@@ -274,11 +288,100 @@ public class CommandRouter {
         return sb.toString();
     }
 
+    private void handleAdminStats(ConnectionContext ctx) {
+        if (!validateAdmin(ctx)) return;
+        ctx.send(adminService.getLiveStatsString());
+    }
+
+    private void handleAdminCreateBatch(ConnectionContext ctx, String[] parts) {
+        if (!validateAdmin(ctx)) return;
+        if (parts.length < 3) {
+            ctx.send("ERROR|Usage: ADMIN_CREATE_BATCH|name|year");
+            return;
+        }
+        AdminService.AdminResult res = adminService.createBatch(parts[1], parts[2]);
+        if (res.success()) {
+            ctx.send("OK|" + res.message());
+        } else {
+            ctx.send("ERROR|" + res.message());
+        }
+    }
+
+    private void handleAdminSetStatus(ConnectionContext ctx, String[] parts) {
+        if (!validateAdmin(ctx)) return;
+        if (parts.length < 3) {
+            ctx.send("ERROR|Usage: ADMIN_SET_STATUS|username|status");
+            return;
+        }
+        AdminService.AdminResult res = adminService.setUserStatus(parts[1], parts[2]);
+        if (res.success()) {
+            ctx.send("OK|" + res.message());
+        } else {
+            ctx.send("ERROR|" + res.message());
+        }
+    }
+
+    private void handleAdminSetRole(ConnectionContext ctx, String[] parts) {
+        if (!validateAdmin(ctx)) return;
+        if (parts.length < 3) {
+            ctx.send("ERROR|Usage: ADMIN_SET_ROLE|username|role");
+            return;
+        }
+        AdminService.AdminResult res = adminService.setUserRole(parts[1], parts[2]);
+        if (res.success()) {
+            ctx.send("OK|" + res.message());
+        } else {
+            ctx.send("ERROR|" + res.message());
+        }
+    }
+
+    private void handleAdminListUsers(ConnectionContext ctx) {
+        if (!validateAdmin(ctx)) return;
+        java.util.List<com.campuschat.dto.UserDto> users = adminService.getAllUsers();
+        ctx.send("USERS_START|" + users.size());
+        for (com.campuschat.dto.UserDto u : users) {
+            ctx.send(String.format("USER_ROW|%d|%s|%s|%s|%s|%s",
+                    u.userId(), u.username(), u.email(), u.role().name(), u.status().name(),
+                    u.batchId() != null ? u.batchId() : "none"));
+        }
+        ctx.send("USERS_END");
+    }
+
+    private void handleAdminListBatches(ConnectionContext ctx) {
+        if (!validateAdmin(ctx)) return;
+        java.util.List<com.campuschat.dto.BatchDto> batches = adminService.getAllBatches();
+        ctx.send("BATCHES_START|" + batches.size());
+        for (com.campuschat.dto.BatchDto b : batches) {
+            ctx.send(String.format("BATCH_ROW|%d|%s|%d", b.batchId(), b.name(), b.year()));
+        }
+        ctx.send("BATCHES_END");
+    }
+
+    private boolean validateAdmin(ConnectionContext ctx) {
+        if (!ctx.isAuthenticated()) {
+            ctx.send("ERROR|Not authenticated");
+            return false;
+        }
+        if (ctx.getRole() != Role.ADMIN) {
+            ctx.send("ERROR|Permission denied. Admin role required.");
+            return false;
+        }
+        if (adminService == null) {
+            ctx.send("ERROR|Admin service is not configured");
+            return false;
+        }
+        return true;
+    }
+
     public RateLimiter getRateLimiter() {
         return rateLimiter;
     }
 
     public RegistrationService getRegistrationService() {
         return registrationService;
+    }
+
+    public AdminService getAdminService() {
+        return adminService;
     }
 }

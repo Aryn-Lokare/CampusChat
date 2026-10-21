@@ -238,10 +238,12 @@ public class NioServer implements Runnable {
         ConnectionContext ctx = (ConnectionContext) key.attachment();
         try {
             boolean fullyDrained = ctx.drain();
-            if (fullyDrained) {
+            if (fullyDrained && key.isValid()) {
                 // Done writing for now; clear OP_WRITE interest to avoid busy-spin
                 key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
             }
+        } catch (CancelledKeyException ignored) {
+            // Key was cancelled (e.g. socket closed after drain)
         } catch (IOException e) {
             disconnectClient(ctx, "Write error: " + e.getMessage());
         }
