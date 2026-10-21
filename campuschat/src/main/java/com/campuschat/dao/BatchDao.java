@@ -37,10 +37,30 @@ public class BatchDao {
     }
 
     public Optional<Batch> findByName(String name) {
+        if (name == null || name.isBlank()) return Optional.empty();
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            return session.createQuery("from Batch b where b.name = :name", Batch.class)
-                    .setParameter("name", name)
+            return session.createQuery("from Batch b where lower(b.name) = lower(:name)", Batch.class)
+                    .setParameter("name", name.trim())
                     .uniqueResultOptional();
+        }
+    }
+
+    public Optional<Batch> findByNameOrId(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+        String trimmed = identifier.trim();
+        // 1. First attempt to lookup by batch name (e.g. IT-2026, COMPS-A)
+        Optional<Batch> byName = findByName(trimmed);
+        if (byName.isPresent()) {
+            return byName;
+        }
+        // 2. Fall back to numeric ID lookup if input is an integer
+        try {
+            int id = Integer.parseInt(trimmed);
+            return findById(id);
+        } catch (NumberFormatException ignored) {
+            return Optional.empty();
         }
     }
 

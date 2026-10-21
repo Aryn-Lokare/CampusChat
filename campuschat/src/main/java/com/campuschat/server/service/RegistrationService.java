@@ -80,10 +80,15 @@ public class RegistrationService {
         }
     }
 
+    public RegistrationResult register(String username, String email, String password, Integer batchId) {
+        return register(username, email, password, batchId != null ? String.valueOf(batchId) : null);
+    }
+
     /**
      * FR-15: Registers a new student account as PENDING and dispatches an email verification token.
+     * Accepts either a batch name (e.g. "IT-2026") or numeric batch ID.
      */
-    public RegistrationResult register(String username, String email, String password, Integer batchId) {
+    public RegistrationResult register(String username, String email, String password, String batchIdentifier) {
         if (username == null || username.isBlank() || email == null || email.isBlank() || password == null || password.isBlank()) {
             return new RegistrationResult(false, "Username, email, and password are required");
         }
@@ -107,14 +112,13 @@ public class RegistrationService {
             return new RegistrationResult(false, "Email is already registered");
         }
 
-        Batch batch = null;
-        if (batchId != null) {
-            batch = batchDao.findById(batchId).orElse(null);
-            if (batch == null) {
-                return new RegistrationResult(false, "Batch ID " + batchId + " does not exist. A valid batch is required.");
-            }
-        } else {
-            return new RegistrationResult(false, "Batch is required for students. Batch cannot be empty.");
+        if (batchIdentifier == null || batchIdentifier.isBlank()) {
+            return new RegistrationResult(false, "Batch name is required for students. Batch cannot be empty.");
+        }
+
+        Batch batch = batchDao.findByNameOrId(batchIdentifier).orElse(null);
+        if (batch == null) {
+            return new RegistrationResult(false, "Batch '" + batchIdentifier + "' does not exist. A valid registered batch name is required.");
         }
 
         // 1. Create user in PENDING status

@@ -175,14 +175,7 @@ public class AdminService {
      */
     public AdminResult setUserBatch(String username, String batchIdStr) {
         if (username == null || username.isBlank() || batchIdStr == null || batchIdStr.isBlank()) {
-            return new AdminResult(false, "Username and batch ID are required");
-        }
-
-        int bId;
-        try {
-            bId = Integer.parseInt(batchIdStr.trim());
-        } catch (NumberFormatException e) {
-            return new AdminResult(false, "Batch ID must be a valid integer");
+            return new AdminResult(false, "Username and batch name/ID are required");
         }
 
         String uName = username.trim();
@@ -196,13 +189,14 @@ public class AdminService {
             return new AdminResult(false, "Cannot assign batch to ADMIN: Admin accounts cannot belong to a batch");
         }
 
-        Optional<com.campuschat.model.Batch> batchOpt = batchDao.findById(bId);
+        Optional<com.campuschat.model.Batch> batchOpt = batchDao.findByNameOrId(batchIdStr);
         if (batchOpt.isEmpty()) {
-            return new AdminResult(false, "Batch #" + bId + " does not exist");
+            return new AdminResult(false, "Batch '" + batchIdStr + "' does not exist");
         }
 
+        int bId = batchOpt.get().getBatchId();
         userDao.updateBatch(uName, bId);
-        logger.info("Admin updated batch of user '{}' to #{}", uName, bId);
+        logger.info("Admin updated batch of user '{}' to batch '{}' (#{})", uName, batchOpt.get().getName(), bId);
 
         // Update live connection context and batch rooms if online
         ConnectionContext liveCtx = sessionRegistry.getContextByUserId(user.getUserId());

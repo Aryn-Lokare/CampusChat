@@ -94,22 +94,16 @@ public class CommandRouter {
         }
 
         if (parts.length < 5 || parts[4].isBlank()) {
-            ctx.send("ERROR|Batch ID is required for student registration. Usage: REGISTER|username|email|password|batchId");
+            ctx.send("ERROR|Batch name is required for student registration. Usage: REGISTER|username|email|password|batchName");
             return;
         }
 
         String username = parts[1];
         String email = parts[2];
         String password = parts[3];
-        Integer batchId = null;
-        try {
-            batchId = Integer.parseInt(parts[4].trim());
-        } catch (NumberFormatException e) {
-            ctx.send("ERROR|Batch ID must be a valid number");
-            return;
-        }
+        String batchIdentifier = parts[4].trim();
 
-        RegistrationService.RegistrationResult result = registrationService.register(username, email, password, batchId);
+        RegistrationService.RegistrationResult result = registrationService.register(username, email, password, batchIdentifier);
         if (result.success()) {
             ctx.send("OK|VERIFY_SENT");
         } else {

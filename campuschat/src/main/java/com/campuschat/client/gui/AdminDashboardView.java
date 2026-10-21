@@ -233,8 +233,8 @@ public class AdminDashboardView extends BorderPane {
         });
 
         TextField batchInput = new TextField();
-        batchInput.setPromptText("Batch ID");
-        batchInput.setPrefWidth(85);
+        batchInput.setPromptText("Batch Name/ID");
+        batchInput.setPrefWidth(110);
 
         Button setBatchBtn = new Button("Assign Batch");
         setBatchBtn.getStyleClass().add("btn-secondary");
@@ -250,13 +250,7 @@ public class AdminDashboardView extends BorderPane {
             }
             String bId = batchInput.getText().trim();
             if (bId.isEmpty()) {
-                showError("Please enter a valid Batch ID (e.g. 1).");
-                return;
-            }
-            try {
-                Integer.parseInt(bId);
-            } catch (NumberFormatException ex) {
-                showError("Batch ID must be a valid number.");
+                showError("Please enter a valid Batch Name or ID (e.g. IT-2026).");
                 return;
             }
             networkClient.send("ADMIN_SET_BATCH|" + selected.getUsername() + "|" + bId);
