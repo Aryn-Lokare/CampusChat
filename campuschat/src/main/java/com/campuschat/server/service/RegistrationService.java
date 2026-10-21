@@ -110,13 +110,11 @@ public class RegistrationService {
         Batch batch = null;
         if (batchId != null) {
             batch = batchDao.findById(batchId).orElse(null);
-        }
-        if (batch == null) {
-            // Assign to first available batch if not specified
-            var batches = batchDao.findAll();
-            if (!batches.isEmpty()) {
-                batch = batches.get(0);
+            if (batch == null) {
+                return new RegistrationResult(false, "Batch ID " + batchId + " does not exist. A valid batch is required.");
             }
+        } else {
+            return new RegistrationResult(false, "Batch is required for students. Batch cannot be empty.");
         }
 
         // 1. Create user in PENDING status

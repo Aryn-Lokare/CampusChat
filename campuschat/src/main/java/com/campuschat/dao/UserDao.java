@@ -129,6 +129,25 @@ public class UserDao {
         }
     }
 
+    public int updateBatch(String username, Integer batchId) {
+        Transaction tx = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            tx = session.beginTransaction();
+            com.campuschat.model.Batch batch = batchId != null ? session.get(com.campuschat.model.Batch.class, batchId) : null;
+            int updated = session.createMutationQuery(
+                    "update User u set u.batch = :batch where u.username = :uname")
+                    .setParameter("batch", batch)
+                    .setParameter("uname", username)
+                    .executeUpdate();
+            tx.commit();
+            return updated;
+        } catch (Exception e) {
+            if (tx != null && tx.isActive()) tx.rollback();
+            logger.error("Failed to update user batch: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+
     public List<User> findAll() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             return session.createQuery("from User u left join fetch u.batch order by u.username", User.class).list();

@@ -232,7 +232,38 @@ public class AdminDashboardView extends BorderPane {
             }
         });
 
-        actions.getChildren().addAll(banBtn, unbanBtn, new Separator(javafx.geometry.Orientation.VERTICAL), roleCombo, roleBtn);
+        TextField batchInput = new TextField();
+        batchInput.setPromptText("Batch ID");
+        batchInput.setPrefWidth(85);
+
+        Button setBatchBtn = new Button("Assign Batch");
+        setBatchBtn.getStyleClass().add("btn-secondary");
+        setBatchBtn.setOnAction(e -> {
+            UserRow selected = userTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showError("Please select a user from the table to assign batch.");
+                return;
+            }
+            if ("ADMIN".equalsIgnoreCase(selected.getRole())) {
+                showError("Admin accounts cannot belong to an academic batch.");
+                return;
+            }
+            String bId = batchInput.getText().trim();
+            if (bId.isEmpty()) {
+                showError("Please enter a valid Batch ID (e.g. 1).");
+                return;
+            }
+            try {
+                Integer.parseInt(bId);
+            } catch (NumberFormatException ex) {
+                showError("Batch ID must be a valid number.");
+                return;
+            }
+            networkClient.send("ADMIN_SET_BATCH|" + selected.getUsername() + "|" + bId);
+            batchInput.clear();
+        });
+
+        actions.getChildren().addAll(banBtn, unbanBtn, new Separator(javafx.geometry.Orientation.VERTICAL), roleCombo, roleBtn, new Separator(javafx.geometry.Orientation.VERTICAL), batchInput, setBatchBtn);
 
         box.getChildren().addAll(userTable, actions);
         return box;

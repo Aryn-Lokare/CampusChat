@@ -142,6 +142,19 @@ public class AdminService {
         }
 
         User user = userOpt.get();
+
+        if (targetRole == Role.STUDENT && user.getBatch() == null) {
+            List<com.campuschat.model.Batch> batches = batchDao.findAll();
+            if (batches.isEmpty()) {
+                return new AdminResult(false, "Cannot set role to STUDENT: Student must belong to a batch, but no batches exist. Please create a batch first.");
+            }
+            userDao.updateBatch(uName, batches.get(0).getBatchId());
+            logger.info("Auto-assigned student '{}' to batch #{}", uName, batches.get(0).getBatchId());
+        } else if (targetRole == Role.ADMIN) {
+            // PRD Section 4: batch must be NULL when role is ADMIN
+            userDao.updateBatch(uName, null);
+        }
+
         userDao.updateRole(uName, targetRole);
         logger.info("Admin updated role of user '{}' to {}", uName, targetRole);
 
@@ -149,9 +162,58 @@ public class AdminService {
         ConnectionContext liveCtx = sessionRegistry.getContextByUserId(user.getUserId());
         if (liveCtx != null) {
             liveCtx.setRole(targetRole);
+            if (targetRole == Role.ADMIN) {
+                liveCtx.setBatchId(null);
+            }
         }
 
         return new AdminResult(true, "ROLE_UPDATED|" + uName + "|" + targetRole.name());
+    }
+
+    /**
+     * FR-11: Assigns or updates a user's batch. (Students cannot have batch = null).
+     */
+    public AdminResult setUserBatch(String username, String batchIdStr) {
+        if (username == null || username.isBlank() || batchIdStr == null || batchIdStr.isBlank()) {
+            return new AdminResult(false, "Username and batch ID are required");
+        }
+
+        int bId;
+        try {
+            bId = Integer.parseInt(batchIdStr.trim());
+        } catch (NumberFormatException e) {
+            return new AdminResult(false, "Batch ID must be a valid integer");
+        }
+
+        String uName = username.trim();
+        Optional<User> userOpt = userDao.findByUsername(uName);
+        if (userOpt.isEmpty()) {
+            return new AdminResult(false, "User '" + uName + "' not found");
+        }
+
+        User user = userOpt.get();
+        if (user.getRole() == Role.ADMIN) {
+            return new AdminResult(false, "Cannot assign batch to ADMIN: Admin accounts cannot belong to a batch");
+        }
+
+        Optional<com.campuschat.model.Batch> batchOpt = batchDao.findById(bId);
+        if (batchOpt.isEmpty()) {
+            return new AdminResult(false, "Batch #" + bId + " does not exist");
+        }
+
+        userDao.updateBatch(uName, bId);
+        logger.info("Admin updated batch of user '{}' to #{}", uName, bId);
+
+        // Update live connection context and batch rooms if online
+        ConnectionContext liveCtx = sessionRegistry.getContextByUserId(user.getUserId());
+        if (liveCtx != null) {
+            batchRoomRegistry.remove(liveCtx);
+            liveCtx.setBatchId(bId);
+            batchRoomRegistry.join(bId, liveCtx);
+            liveCtx.send("INFO|Your batch assignment was updated to Batch #" + bId);
+        }
+
+        return new AdminResult(true, "BATCH_UPDATED|" + uName + "|" + bId);
     }
 
     /**

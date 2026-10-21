@@ -148,8 +148,7 @@ public class AuthView extends BorderPane {
         regPassField = new PasswordField();
         regPassField.setPromptText("At least 6 characters");
 
-        Label batchLbl = new Label("Batch ID (Academic Room)");
-        batchLbl.getStyleClass().add("text-label");
+        Label batchLbl = new Label("Batch ID (Academic Room) *Required*");
         regBatchField = new TextField("1");
         regBatchField.setPromptText("e.g. 1");
 
@@ -246,12 +245,24 @@ public class AuthView extends BorderPane {
             return;
         }
 
+        if (batch.isEmpty()) {
+            showError("Batch ID is required for student registration. It cannot be empty.");
+            return;
+        }
+
+        try {
+            Integer.parseInt(batch);
+        } catch (NumberFormatException e) {
+            showError("Batch ID must be a valid number (e.g. 1).");
+            return;
+        }
+
         if (!networkClient.isConnected()) {
             networkClient.connect();
         }
 
         clearFeedback();
-        networkClient.send("REGISTER|" + user + "|" + email + "|" + pass + (batch.isEmpty() ? "" : "|" + batch));
+        networkClient.send("REGISTER|" + user + "|" + email + "|" + pass + "|" + batch);
     }
 
     private void handleVerify() {

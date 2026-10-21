@@ -71,6 +71,7 @@ public class CommandRouter {
                 case "ADMIN_CREATE_BATCH" -> handleAdminCreateBatch(ctx, parts);
                 case "ADMIN_SET_STATUS" -> handleAdminSetStatus(ctx, parts);
                 case "ADMIN_SET_ROLE" -> handleAdminSetRole(ctx, parts);
+                case "ADMIN_SET_BATCH" -> handleAdminSetBatch(ctx, parts);
                 case "ADMIN_LIST_USERS" -> handleAdminListUsers(ctx);
                 case "ADMIN_LIST_BATCHES" -> handleAdminListBatches(ctx);
                 case "LOGOUT" -> handleLogout(ctx);
@@ -91,8 +92,8 @@ public class CommandRouter {
             return;
         }
 
-        if (parts.length < 4) {
-            ctx.send("ERROR|Usage: REGISTER|username|email|password");
+        if (parts.length < 5 || parts[4].isBlank()) {
+            ctx.send("ERROR|Batch ID is required for student registration. Usage: REGISTER|username|email|password|batchId");
             return;
         }
 
@@ -100,10 +101,11 @@ public class CommandRouter {
         String email = parts[2];
         String password = parts[3];
         Integer batchId = null;
-        if (parts.length >= 5 && !parts[4].isBlank()) {
-            try {
-                batchId = Integer.parseInt(parts[4].trim());
-            } catch (NumberFormatException ignored) {}
+        try {
+            batchId = Integer.parseInt(parts[4].trim());
+        } catch (NumberFormatException e) {
+            ctx.send("ERROR|Batch ID must be a valid number");
+            return;
         }
 
         RegistrationService.RegistrationResult result = registrationService.register(username, email, password, batchId);
@@ -328,6 +330,20 @@ public class CommandRouter {
             return;
         }
         AdminService.AdminResult res = adminService.setUserRole(parts[1], parts[2]);
+        if (res.success()) {
+            ctx.send("OK|" + res.message());
+        } else {
+            ctx.send("ERROR|" + res.message());
+        }
+    }
+
+    private void handleAdminSetBatch(ConnectionContext ctx, String[] parts) {
+        if (!validateAdmin(ctx)) return;
+        if (parts.length < 3) {
+            ctx.send("ERROR|Usage: ADMIN_SET_BATCH|username|batchId");
+            return;
+        }
+        AdminService.AdminResult res = adminService.setUserBatch(parts[1], parts[2]);
         if (res.success()) {
             ctx.send("OK|" + res.message());
         } else {
