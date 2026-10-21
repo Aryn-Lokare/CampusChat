@@ -7,7 +7,7 @@
     <session-factory>
         <!-- Database connection settings using MySQL 8 -->
         <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
-        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/campuschat?useSSL=false&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true</property>
+        <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/campuschat_v2?useSSL=false&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true</property>
         <property name="hibernate.connection.username">root</property>
         <property name="hibernate.connection.password">root</property>
 
@@ -26,8 +26,8 @@
         <property name="hibernate.show_sql">false</property>
         <property name="hibernate.format_sql">true</property>
 
-        <!-- Schema management: database already exists in MySQL -->
-        <property name="hibernate.hbm2ddl.auto">none</property>
+        <!-- Schema management: automatically create/update tables in new campuschat_v2 database -->
+        <property name="hibernate.hbm2ddl.auto">update</property>
 
         <!-- Entity Mappings -->
         <mapping class="com.campuschat.model.Batch"/>
